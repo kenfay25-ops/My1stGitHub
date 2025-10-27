@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>World Clock — GMT+8</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#f6f8fa; color:#0b1220; }
+    .card { background:white; padding:28px; border-radius:12px; box-shadow:0 6px 24px rgba(16,24,40,0.08); width:340px; text-align:center; }
+    h1 { margin:0 0 6px; font-size:18px; font-weight:600; }
+    .tz { color:#555; font-size:13px; margin-bottom:18px; }
+    .time { font-variant-numeric: tabular-nums; font-size:48px; font-weight:700; margin-bottom:6px; }
+    .date { color:#333; font-size:14px; margin-bottom:18px; }
+    .controls { display:flex; gap:8px; justify-content:center; }
+    button { padding:8px 12px; border-radius:8px; border:1px solid #e3e7ea; background:#fff; cursor:pointer; font-size:13px; }
+    button:active { transform:translateY(1px); }
+    small { display:block; margin-top:12px; color:#777; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="card" role="region" aria-label="World clock showing GMT plus 8 time">
+    <h1>World Clock</h1>
+    <div class="tz" id="tz-label">Timezone: GMT+8 — Asia/Shanghai</div>
+    <div class="time" id="time">--:--:--</div>
+    <div class="date" id="date">Loading date…</div>
+
+    <div class="controls">
+      <button id="toggle-format" aria-pressed="false">Switch to 12-hour</button>
+      <button id="copy-iso">Copy ISO</button>
+    </div>
+
+    <small>Updates every second. Based on timezone "Asia/Shanghai".</small>
+  </div>
+
+  <script>
+    (function () {
+      // Choose a representative IANA timezone for GMT+8.
+      // Common choices: "Asia/Shanghai", "Asia/Singapore", "Asia/Hong_Kong", "Asia/Manila"
+      const TIMEZONE = 'Asia/Shanghai';
+      let hour12 = false;
+
+      const elTime = document.getElementById('time');
+      const elDate = document.getElementById('date');
+      const btnToggle = document.getElementById('toggle-format');
+      const btnCopy = document.getElementById('copy-iso');
+      const tzLabel = document.getElementById('tz-label');
+      tzLabel.textContent = `Timezone: GMT+8 — ${TIMEZONE}`;
+
+      function update() {
+        const now = new Date();
+
+        const timeOptions = {
+          timeZone: TIMEZONE,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: hour12
+        };
+
+        const dateOptions = {
+          timeZone: TIMEZONE,
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        };
+
+        // Localized time and date strings for the chosen timezone
+        const timeStr = now.toLocaleTimeString(undefined, timeOptions);
+        const dateStr = now.toLocaleDateString(undefined, dateOptions);
+
+        elTime.textContent = timeStr;
+        elDate.textContent = dateStr;
+
+        // Update accessible label
+        elTime.setAttribute('aria-label', `Time in ${TIMEZONE}: ${timeStr}`);
+        elDate.setAttribute('aria-label', `Date in ${TIMEZONE}: ${dateStr}`);
+      }
+
+      btnToggle.addEventListener('click', () => {
+        hour12 = !hour12;
+        btnToggle.textContent = hour12 ? 'Switch to 24-hour' : 'Switch to 12-hour';
+        btnToggle.setAttribute('aria-pressed', String(hour12));
+        update();
+      });
+
+      btnCopy.addEventListener('click', async () => {
+        try {
+          // Create an ISO-like timestamp in the target timezone.
+          // The easiest reliable way is to format components using Intl and assemble.
+          const now = new Date();
+          const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: TIMEZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          }).formatToParts(now);
+
+          const map = {};
+          for (const p of parts) map[p.type] = p.value;
+          const isoLike = `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}+08:00`;
+
+          await navigator.clipboard.writeText(isoLike);
+          btnCopy.textContent = 'Copied!';
+          setTimeout(() => btnCopy.textContent = 'Copy ISO', 1200);
+        } catch (err) {
+          console.error('Copy failed', err);
+          btnCopy.textContent = 'Copy failed';
+          setTimeout(() => btnCopy.textContent = 'Copy ISO', 1200);
+        }
+      });
+
+      // Start updates
+      update();
+      setInterval(update, 1000);
+    })();
+  </script>
+</body>
+</html>
